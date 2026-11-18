@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ Thống Tờ Trình — CTY Hưng Thịnh</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- SheetJS for client-side Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Phông chuẩn văn bản hành chính Việt Nam cho Tờ trình A4 */
+    .font-to-trinh {
+      font-family: 'Times New Roman', Times, serif;
+    }
+
+    /* Mô phỏng trang giấy A4 trên màn hình */
+    .a4-paper {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 20mm 20mm 20mm 25mm;
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 1024px) {
+      .a4-paper {
+        width: 100%;
+        min-height: auto;
+        padding: 18px;
+        box-shadow: none;
+      }
+    }
+
+    /* Căn lề chuẩn cho bản in / lưu PDF */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .a4-paper {
+        width: 210mm !important;
+        min-height: 297mm !important;
+        margin: 0 !important;
+        padding: 20mm 20mm 20mm 25mm !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: always;
+      }
+    }
+
+    /* Hiệu ứng gạch chân dòng Tiêu ngữ và Phòng ban chuẩn hành chính */
+    .line-under {
+      display: inline-block;
+      border-bottom: 1.5px solid #000;
+      padding-bottom: 2px;
+    }
+
+    /* Hiệu ứng mượt mà */
+    .transition-all-custom {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen antialiased flex flex-col">
+
+  <!-- ==================== LỚP BẢO MẬT MÃ PIN (PIN LOCK SCREEN) ==================== -->
+  <div id="pin_modal" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 transition-all-custom">
+    <div class="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-sm w-full text-center border border-slate-100">
+      <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner">
+        <i data-lucide="shield-check" class="w-9 h-9"></i>
+      </div>
+      <h2 class="text-xl font-bold text-slate-900">Bảo Mật Nội Bộ</h2>
+      <p class="text-xs text-slate-500 mt-1 mb-6">Phòng Kinh Doanh Bán Buôn — Cty Hưng Thịnh<br>Nhập mã PIN để truy cập hồ sơ tờ trình</p>
+
+      <!-- Vòng tròn hiển thị số lượng số PIN đã bấm -->
+      <div class="flex justify-center space-x-3 mb-6" id="pin_dots">
+        <div class="w-4 h-4 rounded-full border-2 border-slate-300 transition-all"></div>
+        <div class="w-4 h-4 rounded-full border-2 border-slate-300 transition-all"></div>
+        <div class="w-4 h-4 rounded-full border-2 border-slate-300 transition-all"></div>
+        <div class="w-4 h-4 rounded-full border-2 border-slate-300 transition-all"></div>
+        <div class="w-4 h-4 rounded-full border-2 border-slate-300 transition-all"></div>
+        <div class="w-4 h-4 rounded-full border-2 border-slate-300 transition-all"></div>
+      </div>
+
+      <!-- Bàn phím số cảm ứng cho điện thoại & máy tính -->
+      <div class="grid grid-cols-3 gap-3 max-w-[260px] mx-auto">
+        <button onclick="pressPin('1')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">1</button>
+        <button onclick="pressPin('2')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">2</button>
+        <button onclick="pressPin('3')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">3</button>
+        <button onclick="pressPin('4')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">4</button>
+        <button onclick="pressPin('5')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">5</button>
+        <button onclick="pressPin('6')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">6</button>
+        <button onclick="pressPin('7')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">7</button>
+        <button onclick="pressPin('8')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">8</button>
+        <button onclick="pressPin('9')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">9</button>
+        <button onclick="clearPin()" class="h-14 rounded-2xl bg-slate-50 hover:bg-red-50 text-red-600 active:scale-95 text-xs font-semibold uppercase tracking-wider transition flex items-center justify-center">Xóa</button>
+        <button onclick="pressPin('0')" class="h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-xl font-semibold text-slate-800 transition">0</button>
+        <button onclick="backspacePin()" class="h-14 rounded-2xl bg-slate-50 hover:bg-slate-200 active:scale-95 text-slate-600 transition flex items-center justify-center">
+          <i data-lucide="delete" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 text-xs text-slate-400">
+        Mã PIN mặc định: <span class="font-mono font-bold text-slate-600">123456</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== HEADER ĐIỀU HÀNH ==================== -->
+  <header class="no-print bg-slate-900 text-white sticky top-0 z-40 shadow-lg border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-xl text-slate-300 hover:bg-slate-800 focus:outline-none">
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-md">
+          HT
+        </div>
+        <div>
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
+            TỜ TRÌNH HƯNG THỊNH
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+              Cloud Sync 24/7
+            </span>
+          </h1>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Phòng Kinh Doanh Bán Buôn — Đào Văn Hưng</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-2">
+        <!-- Nút Tải lên Excel -->
+        <label for="excel_upload_input" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 active:scale-95 text-white transition shadow-sm">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          <span class="hidden md:inline">Nhập Excel Mới</span>
+        </label>
+        <input type="file" id="excel_upload_input" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+
+        <!-- Nút Đồng bộ Cloud -->
+        <button onclick="syncFromCloud(true)" title="Cập nhật dữ liệu từ đám mây" class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition border border-slate-700">
+          <i data-lucide="cloud-download" class="w-4 h-4 text-emerald-400"></i>
+          <span class="hidden lg:inline">Đồng Bộ Cloud</span>
+        </button>
+
+        <!-- Nút In / Lưu PDF -->
+        <button onclick="window.print()" class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 active:scale-95 transition shadow-sm">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">In / Lưu PDF</span>
+        </button>
+
+        <!-- Nút Tải Word .docx -->
+        <button onclick="downloadCurrentDocx()" class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 transition shadow-sm">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Tải .docx</span>
+        </button>
+
+        <!-- Nút Cài đặt / Đổi PIN -->
+        <button onclick="openSettingsModal()" title="Cài đặt mã PIN & Cloud Token" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Nút Khóa bảo mật -->
+        <button onclick="lockScreen()" title="Khóa màn hình" class="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition">
+          <i data-lucide="lock" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== NỘI DUNG CHÍNH (SIDEBAR + KHUNG XEM A4) ==================== -->
+  <div class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:flex lg:gap-6">
+    
+    <!-- SIDEBAR DANH SÁCH TỜ TRÌNH -->
+    <aside id="sidebar" class="no-print lg:w-80 w-full mb-6 lg:mb-0 shrink-0">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden sticky top-20">
+        <!-- Search & Filter Header -->
+        <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="search_input" oninput="renderSidebarList()" placeholder="Tìm khách, mã cont..." class="w-full pl-9 pr-3 py-2 bg-white rounded-xl text-xs border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="flex items-center justify-between mt-3 text-xs font-semibold text-slate-500">
+            <span>DANH SÁCH TỜ TRÌNH</span>
+            <span id="totrinh_count_badge" class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold text-[10px]">0</span>
+          </div>
+        </div>
+
+        <!-- Scrollable List of Tờ trình -->
+        <div id="totrinh_list" class="max-h-[calc(100vh-280px)] overflow-y-auto divide-y divide-slate-100 p-2 space-y-1">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- Tải toàn bộ file Word gộp -->
+        <div class="p-3 border-t border-slate-100 bg-slate-50 text-center">
+          <a href="files/Tong_Hop_To_Trinh_Thang_08_2026.docx" download class="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition">
+            <i data-lucide="file-archive" class="w-4 h-4"></i>
+            Tải File Tổng Hợp (.docx in 1 lượt)
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- KHUNG XEM TRƯỚC BẢN IN A4 (VIEWER) -->
+    <main class="flex-1 flex flex-col items-center">
+      
+      <!-- Thanh công cụ nhỏ phía trên trang A4 -->
+      <div class="no-print w-full max-w-[210mm] mb-3 flex items-center justify-between text-xs text-slate-500 px-2">
+        <span class="flex items-center gap-1.5 font-medium text-slate-600">
+          <i data-lucide="eye" class="w-4 h-4 text-blue-500"></i>
+          Bản xem trước A4 (Tỷ lệ 1:1 chuẩn văn bản hành chính)
+        </span>
+        <span class="text-[11px] text-slate-400">Khổ 210 x 297 mm — Font Times New Roman</span>
+      </div>
+
+      <!-- TỜ TRÌNH TRANG IN A4 THẬT -->
+      <div id="print_area" class="a4-paper font-to-trinh text-[13pt] leading-[1.35] text-black">
+        
+        <!-- 1. Header 2 cột Quốc hiệu & Tên công ty -->
+        <table class="w-full border-collapse mb-5" style="border: none;">
+          <tbody>
+            <tr style="border: none;">
+              <!-- Cột trái: Tên đơn vị -->
+              <td class="text-center align-top w-1/2" style="border: none; padding: 0 8px 0 0;">
+                <div class="text-[11.5pt] uppercase leading-tight font-normal">CÔNG TY CP TM SX & XNK HƯNG THỊNH</div>
+                <div class="text-[12pt] font-normal leading-tight mt-1">
+                  <span class="line-under">Phòng Kinh Doanh Bán Buôn</span>
+                </div>
+              </td>
+              <!-- Cột phải: Quốc hiệu - Tiêu ngữ -->
+              <td class="text-center align-top w-1/2" style="border: none; padding: 0 0 0 8px;">
+                <div class="text-[11.5pt] uppercase leading-tight font-bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+                <div class="text-[12pt] font-normal leading-tight mt-1">
+                  <span class="line-under font-bold">Độc lập- Tự do- Hạnh phúc</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- 2. Tiêu đề TỜ TRÌNH -->
+        <div class="text-center font-bold text-[15pt] tracking-wide mt-3 mb-1">
+          TỜ TRÌNH
+        </div>
+
+        <!-- 3. Trích yếu (V/v: ...) -->
+        <div id="viewer_trich_yeu" class="text-center italic text-[13pt] mb-4">
+          (V/v: Đang tải tờ trình...)
+        </div>
+
+        <!-- 4. Kính gửi (2 dòng chuẩn Mẫu 1) -->
+        <div class="pl-12 space-y-1 mb-4 font-bold text-[13pt]">
+          <div>Kính gửi:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;&nbsp;Ban lãnh đạo Công ty</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;&nbsp;Sếp trực tiếp quản lý</div>
+        </div>
+
+        <!-- 5. Câu dẫn mở đầu -->
+        <div class="indent-10 mb-2.5 text-justify">
+          Em xin trình bày một việc như sau:
+        </div>
+
+        <!-- 6. Nội dung các đoạn văn -->
+        <div id="viewer_noi_dung" class="space-y-2 text-justify">
+          <!-- Rendered by JS -->
+        </div>
+
+        <!-- 7. Ngày tháng năm (Căn phải, in nghiêng) -->
+        <div id="viewer_ngay_lap" class="text-right italic text-[13pt] mt-6 mb-4">
+          Hà Nội, ngày 18 tháng 11 năm 2026
+        </div>
+
+        <!-- 8. Bảng chữ ký 3 cột IN HOA (Khoảng trống ký tươi 75px theo lựa chọn 2-1) -->
+        <table class="w-full border-collapse mt-4" style="border: none;">
+          <tbody>
+            <tr class="font-bold text-[13pt] text-center" style="border: none;">
+              <td class="w-1/3 align-top pb-24" style="border: none;">NGƯỜI LẬP</td>
+              <td class="w-1/3 align-top pb-24" style="border: none;">TRƯỞNG PHÒNG</td>
+              <td class="w-1/3 align-top pb-24" style="border: none;">BAN LÃNH ĐẠO</td>
+            </tr>
+            <tr class="font-bold text-[13pt] text-center" style="border: none;">
+              <td class="align-bottom" style="border: none;">Đào Văn Hưng</td>
+              <td class="align-bottom" style="border: none;">Hoàng Thị Bích Liên</td>
+              <td class="align-bottom" style="border: none;">Nguyễn Ngọc Hà</td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ==================== MODAL CÀI ĐẶT & CLOUD TOKEN ==================== -->
+  <div id="settings_modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-left border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="settings" class="w-5 h-5 text-blue-600"></i>
+          Cài Đặt Hệ Thống
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4 text-xs">
+        <!-- Đổi mã PIN -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Mã PIN bảo mật hiện tại:</label>
+          <div class="flex gap-2">
+            <input type="password" id="new_pin_input" maxlength="6" placeholder="Nhập PIN mới (4-6 số)" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button onclick="saveNewPin()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition">Lưu PIN</button>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Mã PIN mặc định: 123456</p>
+        </div>
+
+        <!-- GitHub Cloud Token để ghi trực tiếp từ điện thoại -->
+        <div class="pt-3 border-t border-slate-100">
+          <label class="block font-semibold text-slate-700 mb-1">GitHub Cloud Token (Tùy chọn):</label>
+          <div class="flex gap-2">
+            <input type="password" id="cloud_token_input" placeholder="gho_... (để lưu dữ liệu mới từ web lên Cloud)" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <button onclick="saveCloudToken()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition">Lưu</button>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Token giúp tự động ghi đè dữ liệu mới lên Gist Vault từ bất kỳ thiết bị nào.</p>
+        </div>
+
+        <!-- Nút đặt lại dữ liệu mặc định -->
+        <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+          <button onclick="resetToSampleData()" class="text-xs text-rose-600 hover:underline">
+            Khôi phục dữ liệu mẫu ban đầu
+          </button>
+          <button onclick="closeSettingsModal()" class="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT ĐIỀU HÀNH ==================== -->
+  <script>
+    // 1. Cấu hình bảo mật & Cloud Gist Vault
+    const DEFAULT_PIN = "123456";
+    const GIST_ID = "3892ec3b8648c7f622847c9dd29e7d2d";
+    const RAW_GIST_URL = `https://gist.githubusercontent.com/ninhhpvnu-coder/${GIST_ID}/raw/to_trinh_vault.json`;
+    const GIST_API_URL = `https://api.github.com/gists/${GIST_ID}`;
+
+    const STORAGE_KEY_DATA = "totrinh_data_cache";
+    const STORAGE_KEY_PIN = "totrinh_custom_pin";
+    const STORAGE_KEY_AUTH = "totrinh_authenticated";
+    const STORAGE_KEY_TOKEN = "totrinh_cloud_token";
+
+    let currentPinInput = "";
+    let totrinhList = [];
+    let activeIndex = 0;
+
+    // 2. Dữ liệu mặc định 2 tờ trình tháng 8 đã bóc tách từ file Excel
+    const INITIAL_SAMPLE_DATA = [
+      {
+        id: "TT-2026-08-01",
+        stt: 1,
+        loai_to_trinh: "D1",
+        ten_kh: "Chú Khanh Quảng Ninh",
+        trich_yeu: "Xin không trừ công nợ cuối tháng 08 kho Chú Khanh Quảng Ninh",
+        ten_hang: "Nung kết Ấn Độ",
+        ma_cont: "WHSU2786152",
+        tien_hang: 138530000,
+        ngay_nhan: "13/08",
+        han_tt: "15/08",
+        ngay_tt: "12/09",
+        ngay_lap: "12/09/2026",
+        file_docx: "files/01_D1_Chú_Khanh_Quảng_Ninh.docx",
+        noi_dung: [
+          "Ngày 13/08, kho Chú Khanh Quảng Ninh có nhận cont Nung kết Ấn Độ, mã cont WHSU2786152, tổng tiền hàng là 138.530.000đ, ngày 15/08 là hạn thanh toán",
+          "Ngày 12/09, Chú Khanh Quảng Ninh đã thanh toán toàn bộ tiền hàng của cont hàng này",
+          "Do một số lý do khách quan nên Chú Khanh Quảng Ninh có chuyển tiền chậm hơn so với hạn thanh toán, vì vậy công nợ cuối tháng 08 của Chú Khanh Quảng Ninh bị dư nợ lại số tiền hàng của cont Nung kết Ấn Độ này",
+          "Vì vậy em xin Sếp không trừ công nợ và lương thưởng của NVKD cuối tháng 08 của Chú Khanh Quảng Ninh số tiền hàng của cont này là 138.530.000đ"
+        ]
+      },
+      {
+        id: "TT-2026-08-02",
+        stt: 2,
+        loai_to_trinh: "D4",
+        ten_kh: "Anh Tú Nghệ An",
+        trich_yeu: "Xin CKTN và không trừ công nợ cuối tháng 08 kho Anh Tú Nghệ An",
+        ten_hang: "Nung kết Ấn Độ",
+        ma_cont: "WHSU2062292",
+        tien_hang: 322988000,
+        ngay_nhan: "25/08",
+        han_tt: "27/08",
+        ngay_tt: "28/09",
+        ngay_lap: "28/09/2026",
+        file_docx: "files/02_D4_Anh_Tú_Nghệ_An.docx",
+        noi_dung: [
+          "Ngày 25/08, kho Anh Tú Nghệ An có nhận cont Nung kết Ấn Độ, mã cont WHSU2062292, tổng tiền hàng là 322.988.000đ, ngày 27/08 là hạn thanh toán",
+          "Ngày 28/09, Anh Tú Nghệ An đã thanh toán toàn bộ tiền hàng của cont hàng này",
+          "Do vì lý do khách quan Anh Tú Nghệ An có chuyển tiền chậm hơn so với hạn thanh toán, vì vậy em xin Sếp duyệt Chiết khấu tiền ngay cont hàng này cho khách, đồng thời không trừ công nợ và lương thưởng của NVKD trong tháng 8"
+        ]
+      }
+    ];
+
+    // 3. Khởi tạo ứng dụng
+    window.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      checkAuthentication();
+      loadData();
+    });
+
+    // --- XỬ LÝ MÃ PIN ---
+    function checkAuthentication() {
+      const isAuth = localStorage.getItem(STORAGE_KEY_AUTH);
+      if (isAuth === "true") {
+        document.getElementById("pin_modal").classList.add("hidden");
+      } else {
+        document.getElementById("pin_modal").classList.remove("hidden");
+        currentPinInput = "";
+        updatePinDots();
+      }
+    }
+
+    function pressPin(digit) {
+      if (currentPinInput.length < 6) {
+        currentPinInput += digit;
+        updatePinDots();
+      }
+      if (currentPinInput.length === 6) {
+        setTimeout(verifyPin, 150);
+      }
+    }
+
+    function clearPin() {
+      currentPinInput = "";
+      updatePinDots();
+    }
+
+    function backspacePin() {
+      currentPinInput = currentPinInput.slice(0, -1);
+      updatePinDots();
+    }
+
+    function updatePinDots() {
+      const dots = document.getElementById("pin_dots").children;
+      for (let i = 0; i < 6; i++) {
+        if (i < currentPinInput.length) {
+          dots[i].classList.add("bg-blue-600", "border-blue-600", "scale-110");
+        } else {
+          dots[i].classList.remove("bg-blue-600", "border-blue-600", "scale-110");
+        }
+      }
+    }
+
+    function verifyPin() {
+      const savedPin = localStorage.getItem(STORAGE_KEY_PIN) || DEFAULT_PIN;
+      if (currentPinInput === savedPin) {
+        localStorage.setItem(STORAGE_KEY_AUTH, "true");
+        document.getElementById("pin_modal").classList.add("hidden");
+      } else {
+        alert("Sai mã PIN! Vui lòng nhập lại (mặc định: 123456)");
+        clearPin();
+      }
+    }
+
+    function lockScreen() {
+      localStorage.removeItem(STORAGE_KEY_AUTH);
+      checkAuthentication();
+    }
+
+    function saveNewPin() {
+      const val = document.getElementById("new_pin_input").value.trim();
+      if (val.length < 4 || val.length > 6 || !/^\d+$/.test(val)) {
+        alert("Mã PIN phải gồm từ 4 đến 6 chữ số!");
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY_PIN, val);
+      alert("✓ Đã đổi mã PIN thành công!");
+      document.getElementById("new_pin_input").value = "";
+    }
+
+    function saveCloudToken() {
+      const val = document.getElementById("cloud_token_input").value.trim();
+      if (val) {
+        localStorage.setItem(STORAGE_KEY_TOKEN, val);
+        alert("✓ Đã lưu Cloud Token vào trình duyệt!");
+      }
+    }
+
+    // --- XỬ LÝ DỮ LIỆU & CLOUD SYNC ---
+    function loadData() {
+      const cached = localStorage.getItem(STORAGE_KEY_DATA);
+      if (cached) {
+        try {
+          totrinhList = JSON.parse(cached);
+        } catch (e) {
+          totrinhList = INITIAL_SAMPLE_DATA;
+        }
+      } else {
+        totrinhList = INITIAL_SAMPLE_DATA;
+      }
+      renderSidebarList();
+      selectToTrinh(0);
+      syncFromCloud(false); // Ngầm kiểm tra cloud khi mở trang
+    }
+
+    async function syncFromCloud(showNotice = true) {
+      try {
+        const res = await fetch(RAW_GIST_URL + "?t=" + Date.now());
+        if (res.ok) {
+          const cloudData = await res.json();
+          if (Array.isArray(cloudData) && cloudData.length > 0) {
+            totrinhList = cloudData;
+            localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(cloudData));
+            renderSidebarList();
+            selectToTrinh(activeIndex);
+            if (showNotice) alert(`✓ Đã đồng bộ thành công ${cloudData.length} tờ trình từ Cloud 24/7!`);
+          }
+        }
+      } catch (err) {
+        if (showNotice) alert("Không thể kết nối Cloud Vault, đang dùng dữ liệu offline.");
+      }
+    }
+
+    async function pushToCloud() {
+      const token = (localStorage.getItem(STORAGE_KEY_TOKEN) || "").trim();
+      if (!token) return;
+
+      try {
+        await fetch(GIST_API_URL, {
+          method: "PATCH",
+          headers: {
+            "Authorization": `token ${token}`,
+            "Accept": "application/vnd.github.v3+json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            files: {
+              "to_trinh_vault.json": {
+                content: JSON.stringify(totrinhList, null, 2)
+              }
+            }
+          })
+        });
+      } catch (e) {
+        console.warn("Lưu lên cloud thất bại:", e);
+      }
+    }
+
+    // --- HIỂN THỊ DANH SÁCH & XEM CHI TIẾT ---
+    function renderSidebarList() {
+      const search = (document.getElementById("search_input")?.value || "").toLowerCase();
+      const container = document.getElementById("totrinh_list");
+      container.innerHTML = "";
+
+      const filtered = totrinhList.filter((item, idx) => {
+        const text = `${item.ten_kh} ${item.ma_cont} ${item.trich_yeu}`.toLowerCase();
+        return text.includes(search);
+      });
+
+      document.getElementById("totrinh_count_badge").innerText = filtered.length;
+
+      filtered.forEach((item, idx) => {
+        const originalIndex = totrinhList.indexOf(item);
+        const isActive = originalIndex === activeIndex;
+        
+        const badgeColors = {
+          "D1": "bg-blue-100 text-blue-700",
+          "D2": "bg-amber-100 text-amber-700",
+          "D3": "bg-purple-100 text-purple-700",
+          "D4": "bg-emerald-100 text-emerald-700",
+          "D5": "bg-cyan-100 text-cyan-700",
+          "D6": "bg-rose-100 text-rose-700",
+          "D7": "bg-indigo-100 text-indigo-700"
+        };
+        const badgeClass = badgeColors[item.loai_to_trinh] || "bg-slate-100 text-slate-700";
+
+        const div = document.createElement("div");
+        div.className = `p-3 rounded-xl cursor-pointer transition text-left ${isActive ? 'bg-blue-50/80 border border-blue-200' : 'hover:bg-slate-50 border border-transparent'}`;
+        div.onclick = () => selectToTrinh(originalIndex);
+
+        div.innerHTML = `
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeClass}">${item.loai_to_trinh || 'TT'}</span>
+            <span class="text-[11px] text-slate-400 font-mono">${item.ngay_lap || ''}</span>
+          </div>
+          <div class="font-semibold text-xs text-slate-900 truncate">${item.ten_kh}</div>
+          <div class="text-[11px] text-slate-500 truncate mt-0.5">${item.trich_yeu}</div>
+          ${item.ma_cont ? `<div class="text-[10px] text-blue-600 font-mono mt-1">Cont: ${item.ma_cont}</div>` : ''}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function selectToTrinh(index) {
+      if (!totrinhList[index]) return;
+      activeIndex = index;
+      renderSidebarList();
+
+      const item = totrinhList[index];
+      
+      // Gán Trích yếu
+      let ty = item.trich_yeu || "";
+      if (!ty.startsWith("(")) ty = `(V/v: ${ty.replace(/^V\/v:\s*/i, '')})`;
+      document.getElementById("viewer_trich_yeu").innerText = ty;
+
+      // Gán các đoạn văn nội dung
+      const bodyContainer = document.getElementById("viewer_noi_dung");
+      bodyContainer.innerHTML = "";
+      (item.noi_dung || []).forEach(p => {
+        const pEl = document.createElement("div");
+        pEl.className = "indent-10 text-justify";
+        pEl.innerText = p;
+        bodyContainer.appendChild(pEl);
+      });
+
+      // Gán ngày lập
+      let dateText = item.ngay_lap || "";
+      if (!dateText.toLowerCase().startsWith("hà nội")) {
+        const parts = dateText.split(/[\/\-]/);
+        if (parts.length === 3) {
+          dateText = `Hà Nội, ngày ${parts[0]} tháng ${parts[1]} năm ${parts[2]}`;
+        } else {
+          dateText = `Hà Nội, ngày 18 tháng 11 năm 2026`;
+        }
+      }
+      document.getElementById("viewer_ngay_lap").innerText = dateText;
+    }
+
+    // --- TẢI FILE WORD ĐANG XEM ---
+    function downloadCurrentDocx() {
+      const item = totrinhList[activeIndex];
+      if (!item) return;
+
+      if (item.file_docx) {
+        const a = document.createElement("a");
+        a.href = item.file_docx;
+        a.download = `${item.ten_kh.replace(/[^a-zA-Z0-9_\u00C0-\u1EF9]/g, '_')}.docx`;
+        a.click();
+      } else {
+        alert("Tờ trình này được nhập mới từ trình duyệt. Bạn có thể bấm nút [In / Lưu PDF] để xuất file ngay lập tức!");
+      }
+    }
+
+    // --- UPLOAD EXCEL TRÊN WEB ---
+    function handleExcelUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1, raw: false});
+
+          // Tìm dòng tiêu đề
+          let headerIdx = -1;
+          for (let r = 0; r < Math.min(10, rows.length); r++) {
+            const joined = (rows[r] || []).join(" ").toUpperCase();
+            if (joined.includes("LOẠI TỜ TRÌNH") || joined.includes("KHÁCH HÀNG")) {
+              headerIdx = r;
+              break;
+            }
+          }
+
+          if (headerIdx === -1) {
+            alert("Không nhận diện được cấu trúc bảng trong file Excel này!");
+            return;
+          }
+
+          const headerRow = rows[headerIdx].map(c => String(c || "").trim().toUpperCase());
+          let countAdded = 0;
+
+          // Bóc tách từng dòng
+          for (let r = headerIdx + 1; r < rows.length; r++) {
+            const row = rows[r];
+            if (!row || row.length === 0) continue;
+
+            // Đọc theo file DỮ LIỆU ĐẦU VÀO LÀM TỜ TRÌNH.xlsx
+            const stt = row[0];
+            const loai_raw = String(row[1] || "").trim();
+            const tieu_de = String(row[2] || "").trim();
+            const ma_cont = String(row[4] || "").trim();
+            const ngay_nhan = String(row[5] || "").trim();
+            const ten_kh = String(row[6] || "").trim();
+            const ten_hang = String(row[7] || "").trim();
+            const tien_hang = row[8];
+            const han_tt = String(row[9] || "").trim();
+            const ngay_tt = String(row[10] || "").trim();
+
+            if (!ten_kh && !loai_raw) continue;
+
+            let loai = "D1";
+            let trich_yeu = tieu_de;
+            const paragraphs = [];
+
+            paragraphs.push(`Ngày ${ngay_nhan}, kho ${ten_kh} có nhận cont ${ten_hang}, mã cont ${ma_cont}, ngày ${han_tt} là hạn thanh toán`);
+            if (ngay_tt) {
+              paragraphs.push(`Ngày ${ngay_tt}, ${ten_kh} đã thanh toán toàn bộ tiền hàng của cont hàng này`);
+            }
+
+            if (loai_raw.toLowerCase().includes("chiết khấu")) {
+              loai = "D4";
+              if (!trich_yeu) trich_yeu = `Xin CKTN và không trừ công nợ kho ${ten_kh}`;
+              paragraphs.push(`Do vì lý do khách quan ${ten_kh} có chuyển tiền chậm hơn so với hạn thanh toán, vì vậy em xin Sếp duyệt Chiết khấu tiền ngay cont hàng này cho khách, đồng thời không trừ công nợ và lương thưởng của NVKD`);
+            } else {
+              loai = "D1";
+              if (!trich_yeu) trich_yeu = `Xin không trừ công nợ kho ${ten_kh}`;
+              paragraphs.push(`Do một số lý do khách quan nên ${ten_kh} có chuyển tiền chậm hơn so với hạn thanh toán, vì vậy em xin Sếp không trừ công nợ và lương thưởng của NVKD`);
+            }
+
+            totrinhList.unshift({
+              id: "TT-UPLOAD-" + Date.now() + "-" + r,
+              stt: totrinhList.length + 1,
+              loai_to_trinh: loai,
+              ten_kh: ten_kh,
+              trich_yeu: trich_yeu,
+              ma_cont: ma_cont,
+              ngay_lap: ngay_tt || "18/11/2026",
+              noi_dung: paragraphs
+            });
+            countAdded++;
+          }
+
+          if (countAdded > 0) {
+            localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(totrinhList));
+            renderSidebarList();
+            selectToTrinh(0);
+            pushToCloud();
+            alert(`✓ Đã nạp thành công ${countAdded} tờ trình mới từ file Excel! Dữ liệu đã lưu và gửi lên Cloud.`);
+          } else {
+            alert("Không tìm thấy dòng dữ liệu tờ trình hợp lệ trong file!");
+          }
+        } catch (err) {
+          alert("Lỗi đọc file Excel: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // --- MODAL CONTROLS ---
+    function openSettingsModal() {
+      document.getElementById("settings_modal").classList.remove("hidden");
+    }
+    function closeSettingsModal() {
+      document.getElementById("settings_modal").classList.add("hidden");
+    }
+    function resetToSampleData() {
+      if (confirm("Bạn có chắc muốn đặt lại dữ liệu mẫu tháng 8 ban đầu?")) {
+        totrinhList = INITIAL_SAMPLE_DATA;
+        localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(totrinhList));
+        renderSidebarList();
+        selectToTrinh(0);
+        pushToCloud();
+        closeSettingsModal();
+      }
+    }
+    function toggleMobileSidebar() {
+      const s = document.getElementById("sidebar");
+      s.classList.toggle("hidden");
+    }
+  </script>
+</body>
+</html>

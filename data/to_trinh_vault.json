@@ -1,0 +1,41 @@
+[
+  {
+    "id": "TT-2026-08-01",
+    "stt": 1,
+    "loai_to_trinh": "D1",
+    "ten_kh": "Chú Khanh Quảng Ninh",
+    "trich_yeu": "Xin không trừ công nợ cuối tháng 08 kho Chú Khanh Quảng Ninh",
+    "ten_hang": "Nung kết Ấn Độ",
+    "ma_cont": "WHSU2786152",
+    "tien_hang": 138530000,
+    "ngay_nhan": "13/08",
+    "han_tt": "15/08",
+    "ngay_tt": "12/09",
+    "ngay_lap": "12/09/2026",
+    "noi_dung": [
+      "Ngày 13/08, kho Chú Khanh Quảng Ninh có nhận cont Nung kết Ấn Độ, mã cont WHSU2786152, tổng tiền hàng là 138.530.000đ, ngày 15/08 là hạn thanh toán",
+      "Ngày 12/09, Chú Khanh Quảng Ninh đã thanh toán toàn bộ tiền hàng của cont hàng này",
+      "Do một số lý do khách quan nên Chú Khanh Quảng Ninh có chuyển tiền chậm hơn so với hạn thanh toán, vì vậy công nợ cuối tháng 08 của Chú Khanh Quảng Ninh bị dư nợ lại số tiền hàng của cont Nung kết Ấn Độ này",
+      "Vì vậy em xin Sếp không trừ công nợ và lương thưởng của NVKD cuối tháng 08 của Chú Khanh Quảng Ninh số tiền hàng của cont này là 138.530.000đ"
+    ]
+  },
+  {
+    "id": "TT-2026-08-02",
+    "stt": 2,
+    "loai_to_trinh": "D4",
+    "ten_kh": "Anh Tú Nghệ An",
+    "trich_yeu": "Xin CKTN và không trừ công nợ cuối tháng 08 kho Anh Tú Nghệ An",
+    "ten_hang": "Nung kết Ấn Độ",
+    "ma_cont": "WHSU2062292",
+    "tien_hang": 322988000,
+    "ngay_nhan": "25/08",
+    "han_tt": "27/08",
+    "ngay_tt": "28/09",
+    "ngay_lap": "28/09/2026",
+    "noi_dung": [
+      "Ngày 25/08, kho Anh Tú Nghệ An có nhận cont Nung kết Ấn Độ, mã cont WHSU2062292, tổng tiền hàng là 322.988.000đ, ngày 27/08 là hạn thanh toán",
+      "Ngày 28/09, Anh Tú Nghệ An đã thanh toán toàn bộ tiền hàng của cont hàng này",
+      "Do vì lý do khách quan Anh Tú Nghệ An có chuyển tiền chậm hơn so với hạn thanh toán, vì vậy em xin Sếp duyệt Chiết khấu tiền ngay cont hàng này cho khách, đồng thời không trừ công nợ và lương thưởng của NVKD trong tháng 8"
+    ]
+  }
+]
